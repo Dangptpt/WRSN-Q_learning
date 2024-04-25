@@ -2,6 +2,17 @@ import numpy as np
 import math
 from scipy.spatial.distance import euclidean
 
+def binary_search(arr, target):
+    left, right = 0, len(arr) - 1
+    while left <= right:
+        mid =  (right - left) // 2
+        
+        if arr[mid] > target:
+            right = mid 
+        else:
+            left = mid
+
+    return left
 
 def init_qtable(n_actions):
     return np.zeros((n_actions+1, n_actions+1), dtype=float)
@@ -15,7 +26,7 @@ def init_list_action(n_actions):
     
 
 class Q_learning:
-    def __init__(self, mc, n_actions=81, epsilon=0.05, alpha=3e-4, gamma=0.5):
+    def __init__(self, mc, n_actions=81, epsilon=0.05, alpha=3e-4, gamma=0.5, theta = 0.3):
         self.n_actions = n_actions
         self.action_list = init_list_action(n_actions)
         self.q_table = init_qtable(n_actions)
@@ -27,6 +38,7 @@ class Q_learning:
         self.mc = mc
         self.alpha = alpha
         self.gamma = gamma
+        self.theta = theta
 
     def update(self):
         self.caculate_reward()
@@ -56,6 +68,7 @@ class Q_learning:
             energy_factor[id] = reward[0]
             priority_factor[id] = reward[1]
             target_monitoring_factor[id] = reward[2]
+            self.charging_time[id] = reward[3]  
 
         energy_factor = energy_factor / np.sum(energy_factor)
         priority_factor = priority_factor / np.sum(priority_factor)
@@ -87,5 +100,59 @@ class Q_learning:
         # target monitoring factor
         target_monitoring_factor = t
         
-        return energy_factor, priority_factor, target_monitoring_factor  
+        charging_time = self.get_charging_time(state=state)
+
+        return energy_factor, priority_factor, target_monitoring_factor, charging_time 
     
+    def get_charging_time(self, state):
+        # request_id = [request["id"] for request in network.mc.list_request]
+        time_move = euclidean(
+            self.mc.current, self.action_list[self.state]) / self.mc.velocity
+        energy_critical = self.net.listNodes[0].threshold + self.theta*self.net.listNodes[0].capacity
+        
+        positive_critical_nodes = []  # list of node which critical and positive charge
+        negative_normal_nodes = []  # list of node which normal and negative charge
+        
+        for node in self.mc.net.listNodes:
+            if node.energy < energy_critical and node.energyCS - node.energyRR < 0:
+                positive_critical_nodes.append(node)
+            if node.energy > energy_critical and node.energyCS - node.energyRR > 0:
+                negative_normal_nodes.append(node)
+        
+        ta = []
+
+        for node in positive_critical_nodes:
+            t_move = euclidean(self.mc.cur_phy_action[0:2], self.action_list[state]) / self.mc.velocity
+            e = node.energy
+            if self.mc.cur_action_type == 'moving':
+                e = max (node.thresshold, e - t_move*node.energyCS + t_move*node.energyRR)
+            charging_rate = self.mc.alpha / (euclidean(self.mc.cur_phy_action[0:2], node.location)+ self.mc.beta)
+            ta.append(float(max(energy_critical - e, 0) / charging_rate))
+
+        tb = []
+        for node in negative_normal_nodes:
+            t_move = euclidean(self.mc.cur_phy_action[0:2], self.action_list[state]) / self.mc.velocity
+            e = node.energy
+            if self.mc.cur_action_type == 'moving':
+                e = min (node.thresshold, e - t_move*node.energyCS + t_move*node.energyRR)
+            charging_rate = self.mc.alpha / (euclidean(self.mc.cur_phy_action[0:2], node.location)+ self.mc.beta)
+            tb.append(float(max(energy_critical - e, 0) / charging_rate))
+        
+        ta.sort()
+        tb.sort()
+
+        t_optimal = 0.0
+        node_change_state = -9999
+        for change1, t in enumerate(ta):
+            change2 = binary_search(tb, t)
+            if node_change_state < change1 - change2:
+                node_change_state = change1 - change2
+                t_optimal = t
+        
+        for change2, t in enumerate(tb):
+            change1 = binary_search(ta, t)
+            if node_change_state < change1 - change2:
+                node_change_state = change1 - change2
+                t_optimal = t
+
+        return t_optimal
