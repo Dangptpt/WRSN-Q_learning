@@ -9,6 +9,8 @@ class Network:
         self.targets_active = [1 for _ in range(len(self.listTargets))]
         self.alive = 1
         self.list_request = []
+        self.wait_request = []
+        self.dead_node = []
         # Setting BS and Node environment and network
         baseStation.env = self.env
         baseStation.net = self
@@ -33,7 +35,6 @@ class Network:
             target.id = it
             it += 1
          
-
     # Function is for setting nodes' level and setting all targets as covered
     def setLevels(self):
         for node in self.listNodes:
@@ -66,21 +67,51 @@ class Network:
             tmp2.clear()
         return
 
+    def trigger(self):
+        for node in self.net.listNodes:
+            if node.status == 0 and self.dead_node[node.id] == 0:
+                self.dead_node[node.id] = 1
+                return True
+        return False
+            
     def operate(self, t=1):
-        
+
         for node in self.listNodes:
             self.env.process(node.operate(t=t))
         self.env.process(self.baseStation.operate(t=t))
         while True:
             yield self.env.timeout(t / 10.0)
+            # if self.trigger() == True:
+            #     self.setLevels()
             self.setLevels()
             self.alive = self.check_targets()
             yield self.env.timeout(9.0 * t / 10.0)
+            
             for node in self.listNodes:
                 if node.is_request == True:
-                    self.list_request.append(node.id)
+                    check = False
+                    for request in self.list_request:
+                        if request == node.id:
+                            check = True
+                            break
+                    if check == False:
+                        self.list_request.append(node.id)
+                        self.wait_request.append(node.id)
+
+            removes = []
+            for node in self.list_request:
+                if self.listNodes[node].is_request == False:
+                    removes.append(node)
+            for node in removes:
+                self.list_request.remove(node)
+            
+            # if len(self.list_request) > 0 and len(self.wait_request) == 0:
+            #     self.wait_request = self.list_request.copy()
             if self.alive == 0 or self.env.now >= self.max_time:
-                break         
+                break   
+            
+            # if len(self.wait_request) > 0 and len(self.list_request) > 0:
+            #     break
         return
 
     # If any target dies, value is set to 0

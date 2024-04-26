@@ -26,7 +26,9 @@ class Node:
         self.et = phy_spe['et']
         self.efs = phy_spe['efs']
         self.emp = phy_spe['emp']
+        self.eth = phy_spe['eth']
 
+        
         # energRR  : replenish rate
         self.energyRR = 0
 
@@ -41,8 +43,29 @@ class Node:
         self.log = []
         self.log_energy = 0
         self.check_status()
+        self.target_data = []
+        self.num_path = 0
         self.is_request = False
         self.theta = 0.2
+
+        self.num_path = 0
+        
+    def count_path(self):
+        tmp = self.neighbors.copy()
+        tmp2 = []
+        res = 0
+        while True:
+            if len(tmp) == 0:
+                break
+            for node in tmp:
+                for neighbor_node in node.neighbors:
+                    if node.level < neighbor_node.level:
+                        tmp2.append(neighbor_node)
+                        if len(neighbor_node.listTargets) > 0:
+                            res += 1
+            tmp = tmp2[:]
+            tmp2.clear()
+        self.num_path = res
 
     def operate(self, t=1):
         """
@@ -52,6 +75,7 @@ class Node:
         """
         self.probe_targets()
         self.probe_neighbors()
+        #self.count_path()
         while True:
             self.log_energy = 0
 
@@ -62,9 +86,10 @@ class Node:
             self.energy = min(self.energy + self.energyRR * t * 0.5, self.capacity)
             if random.random() < self.prob_gp:
                 self.generate_packages()
-
-            if self.energy < self.threshold:
+            if self.energy < self.eth:
                 self.is_request = True
+            else:
+                self.is_request = False
             # After another 0.5 secs (at the end of the second), node recalculate its energy
             yield self.env.timeout(t * 0.5)
             if self.status == 0:
@@ -127,6 +152,9 @@ class Node:
 
     def receive_package(self, package):
         e_receive = self.er * package.package_size
+        if package.target_id not in self.target_data :
+            self.target_data.append(package.target_id)
+            self.num_path +=1
         if self.energy - self.threshold < e_receive:
             self.energy = self.threshold
         else:
@@ -151,5 +179,6 @@ class Node:
 
     def check_status(self):
         if self.energy <= self.threshold:
+
             self.status = 0
             self.energyCS = 0

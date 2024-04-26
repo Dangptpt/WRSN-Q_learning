@@ -5,12 +5,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from controller.random.RandomController import RandomController
 from rl_env.WRSN import WRSN
-from utils import draw_heatmap_state
 
 
-def log(net, mcs):
+def log(net):
     # If you want to print something, just put it here. Do not fix the core code.
     while True:
         if net.env.now % 100 == 0:
@@ -19,18 +17,35 @@ def log(net, mcs):
 
 network = WRSN(scenario_path="physical_env/network/network_scenarios/hanoi1000n50.yaml"
                ,agent_type_path="physical_env/mc/mc_types/default.yaml"
-               ,num_agent=3, map_size=100,density_map=True)
-controller = RandomController()
+               ,num_agent=3)
 
-request = network.reset()
-for id, _ in enumerate(network.net.targets_active):
-    if _ == 0:
-        print(id)
 
-#network.env.process(log(network.net, network.agents))   
-while not request["terminal"]:
-    print(request["agent_id"], request["action"], request["terminal"])
-    action = controller.make_action(request["agent_id"], request["state"], request["info"], network)
-    request = network.step(request["agent_id"], action)
+n_episode = 5
+
+q = []
+for i in range(3):
+    q.append(np.zeros((82, 82), dtype=float))
     
-print(network.net.env.now)
+for eps in range(n_episode):
+    network.reset()
+    network.env.process(log(network.net)) 
+    for id, agent, in enumerate(network.agents):
+        agent.q_learning.q_table = q[id]
+    while True:
+        if network.net.alive == 1:
+            #network.random_agent_action()
+            network.choose_request()
+            network.step()
+        else:
+            for id, agent, in enumerate(network.agents):
+                q[id] = agent.q_learning.q_table 
+            break
+    print(network.net.env.now)
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+for i in range(3):
+    sns.heatmap(q[i], cmap='viridis') 
+    plt.savefig(f"heatmapq{i}.png")

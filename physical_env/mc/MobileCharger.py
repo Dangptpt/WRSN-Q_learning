@@ -13,6 +13,7 @@ class MobileCharger:
         self.env = None
         self.net = None
         self.id = None
+        self.cur_phy_action = None
         self.location = np.array(location)
         self.energy = mc_phy_spe['capacity']
         self.capacity = mc_phy_spe['capacity']
@@ -31,6 +32,8 @@ class MobileCharger:
         self.connected_nodes = []
         self.incentive = 0
         self.q_learning = Q_learning(mc=self)
+        self.charge_queue = []
+        
     def charge_step(self, t):
         """
         The charging process to nodes in 'nodes' within simulateTime
@@ -40,9 +43,10 @@ class MobileCharger:
         for node in self.connected_nodes:
             node.charger_connection(self)
 
-        # print("MC " + str(self.id) + " " + str(self.energy) + " Charging", self.location, self.energy, self.chargingRate)
+        #print("MC " + str(self.id) + " " + str(self.energy) + " Charging", self.location, self.energy, self.chargingRate)
         yield self.env.timeout(t)
         self.energy = self.energy - self.chargingRate * t
+        self.cur_phy_action[2] = max(0, self.cur_phy_action[2] - t)
         for node in self.connected_nodes:
             node.charger_disconnection(self)
         self.chargingRate = 0
@@ -104,7 +108,10 @@ class MobileCharger:
         # print("MC " + str(self.id), "phy_action", phy_action)
         destination = np.array([phy_action[0], phy_action[1]])
         chargingTime = phy_action[2]
-
+        is_action = phy_action[3]
+        if is_action == False:
+            yield self.env.timeout(1)
+            return
         usedEnergy = euclidean(destination, self.location) * self.pm
         tmp = 0
         for node in self.net.listNodes:
