@@ -7,12 +7,11 @@ import pandas as pd
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from rl_env.WRSN import WRSN
 
-
 def log(net):
     # If you want to print something, just put it here. Do not fix the core code.
     while True:
         if net.env.now % 100 == 0:
-            print(net.env.now)
+            print (net.env.now)
         yield net.env.timeout(1.0)
 
 network = WRSN(scenario_path="physical_env/network/network_scenarios/hanoi1000n50.yaml"
@@ -20,11 +19,12 @@ network = WRSN(scenario_path="physical_env/network/network_scenarios/hanoi1000n5
                ,num_agent=3)
 
 
-n_episode = 5
+n_episode = 1
+
 
 q = []
 for i in range(3):
-    q.append(np.zeros((82, 82), dtype=float))
+    q.append(np.zeros((83, 83), dtype=float))
     
 for eps in range(n_episode):
     network.reset()
@@ -33,10 +33,10 @@ for eps in range(n_episode):
         agent.q_learning.q_table = q[id]
     while True:
         if network.net.alive == 1:
-            #network.random_agent_action()
-            network.choose_request()
             network.step()
         else:
+            for i, node in enumerate(network.net.listNodes):
+                print (i, node.location, node.energy, node.energyCS, node.energyRR, node.num_path)
             for id, agent, in enumerate(network.agents):
                 q[id] = agent.q_learning.q_table 
             break
@@ -46,6 +46,5 @@ for eps in range(n_episode):
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-for i in range(3):
-    sns.heatmap(q[i], cmap='viridis') 
-    plt.savefig(f"heatmapq{i}.png")
+sns.heatmap(q[0], q[1], q[2], cmap='viridis') 
+plt.savefig("heatmapq1.png")

@@ -42,6 +42,7 @@ class WRSN(gym.Env):
         return
     
     def choose_request(self):
+
         if len(self.net.wait_request) > 0:
             self.net.wait_request.pop()
             action = []
@@ -50,41 +51,93 @@ class WRSN(gym.Env):
                 tmp1, tmp2 = agent.q_learning.update()
                 action.append(tmp1)
                 Q_value.append(tmp2)
+            
+            if np.random.uniform(0,1) < 0.3:
+                max_id = np.random.randint(0, len(self.agents))
+            else:
+                max_value = np.max(Q_value)
+                max_id = np.random.choice([id for id, value in enumerate(Q_value) if value == max_value])
 
-            max_value = np.max(Q_value)
-            max_id = np.random.choice([id for id, value in enumerate(Q_value) if value == max_value])
-
+            print(self.env.now)
+            print (Q_value)
             self.agents[max_id].q_learning.choose_next_state()
+            print (self.agents[0].q_learning.state, self.agents[1].q_learning.state, self.agents[2].q_learning.state)
             self.agents[max_id].charge_queue.append(action[max_id])
         
     
     def random_agent_action(self):
-        if len(self.net.wait_request) > 0:
+        if len(self.net.list_request) > 0:
             id = np.random.randint(0, len(self.agents))
             
             node_id = np.random.randint(0, 82)
             action = [self.net.listNodes[node_id].location[0], self.net.listNodes[node_id].location[1], 20, True]
-            self.net.wait_request.pop()
             self.agents[id].charge_queue.append(action)
 
-    def step(self):
+    def step(self):            
+        n_request = len(self.net.list_request) 
+
         for id, agent in enumerate(self.agents):
-            if len(agent.charge_queue) > 0 and agent.cur_phy_action[2] == 0:
-                action = agent.charge_queue[0]
-                agent.charge_queue.pop(0)
+            if n_request > 0 and agent.cur_phy_action[2] == 0:
+                charging_time = self.charging_time(id)
+                #print(charging_time)
+                destination, q_max_value, state = agent.q_learning.update(charging_time)
+                action = [destination[0], destination[1], charging_time[state], True]
                 print (id, action)
-                self.agents_process[id] = self.env.process(agent.operate_step(action))
-            else:
-                agent.location
-                self.agents_process[id] = self.env.process(agent.operate_step([agent.location[0], agent.location[1], 0, False]))
+                self.env.process(agent.operate_step(action))
+                n_request -= 1
 
-        general_process = self.net_process
-        for id, agent in enumerate(self.agents):
-            if agent.status != 0:
-                general_process = general_process | self.agents_process[id]
+        self.env.run(until=self.env.now + 1)    
+        
 
-        self.env.run(until=general_process)
-        
-        
-    def run(self):
-        self.env.run(until=self.net_process)
+    def charging_time(self, mc_id):
+        time = []
+        for i in range(self.agents[mc_id].q_learning.n_actions):
+            time.append(self.get_charging_time(self.agents[mc_id], i))
+        return time
+    
+    def get_charging_time(self, mc, state):
+        time_move = euclidean(mc.cur_phy_action[0:2], mc.q_learning.action_list[state]) / mc.velocity
+
+        energy_critical = self.net.listNodes[0].eth + 0.1 * self.net.listNodes[0].capacity
+
+        positive_critical_nodes = []  # list of node which critical and positive charge
+        negative_normal_nodes = []  # list of node which normal and negative charge
+
+        for node in self.net.listNodes:
+            d = euclidean(node.location, mc.q_learning.action_list[state])
+            p = (mc.alpha / (d + mc.beta) ** 2)
+            p1 = 0
+            for other_mc in self.agents:
+                d = euclidean(other_mc.cur_phy_action[0:2], node.location)
+                if other_mc.chargingRange > d and other_mc.id != mc.id:
+                    p1 += (other_mc.alpha / (d + other_mc.beta) ** 2) * other_mc.cur_phy_action[2]
+           
+            if node.energy - time_move * node.energyCS + p1 < energy_critical and p - node.energyCS > 0:
+                positive_critical_nodes.append((node, p, p1))
+            if node.energy - time_move * node.energyCS + p1 > energy_critical and p - node.energyCS < 0:
+                negative_normal_nodes.append((node, p, p1))
+        ta = []
+
+        for node, p, p1 in positive_critical_nodes:
+            ta.append((energy_critical - node.energy + time_move * node.energyCS - p1) / (p - node.energyCS))
+            
+        for node, p, p1 in negative_normal_nodes:
+            ta.append((energy_critical - node.energy + time_move * node.energyCS - p1) / (p - node.energyCS))
+          
+        dead_list = []
+        #print(ta)
+        for T in ta:
+            dead_node = 0
+            for node, p, p1 in positive_critical_nodes:
+                term = node.energy - time_move * node.energyCS + p1 + (p - node.energyCS) * T
+                if term < energy_critical:
+                    dead_node += 1
+            for node, p, p1 in negative_normal_nodes:
+                term = node.energy - time_move * node.energyCS + p1 + (p - node.energyCS) * T
+                if term < energy_critical:
+                    dead_node += 1
+            dead_list.append(dead_node)
+        if dead_list:
+            arg_min = np.argmin(dead_list)
+            return ta[arg_min]
+        return 0

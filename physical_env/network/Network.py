@@ -89,21 +89,12 @@ class Network:
             
             for node in self.listNodes:
                 if node.is_request == True:
-                    check = False
-                    for request in self.list_request:
-                        if request == node.id:
-                            check = True
-                            break
-                    if check == False:
+                    if node.id not in self.list_request:
                         self.list_request.append(node.id)
-                        self.wait_request.append(node.id)
-
-            removes = []
-            for node in self.list_request:
-                if self.listNodes[node].is_request == False:
-                    removes.append(node)
-            for node in removes:
-                self.list_request.remove(node)
+                else:
+                    if node.id in self.list_request:
+                        self.list_request.remove(node.id)
+                
             
             # if len(self.list_request) > 0 and len(self.wait_request) == 0:
             #     self.wait_request = self.list_request.copy()
