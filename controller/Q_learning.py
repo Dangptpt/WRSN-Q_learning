@@ -1,16 +1,28 @@
 import numpy as np
-import math
 from scipy.spatial.distance import euclidean
+from sklearn.cluster import KMeans
+import numpy as np
+
+
+def kmeans_clustering(list_node, n_clusters):
+    kmeans = KMeans(n_clusters=n_clusters)
+    kmeans.fit(list_node)
+    centers = kmeans.cluster_centers_
+    labels = kmeans.predict(list_node) 
+    return centers
+
 
 def init_qtable(n_actions):
     return np.zeros((n_actions, n_actions), dtype=float)
 
 def init_list_action(n_actions, net):
-    list_action = []
-    list_action.append([net.baseStation.location[0], net.baseStation.location[1]])
-    for i in range(0, n_actions-1):
-        list_action.append([net.listNodes[i].location[0], net.listNodes[i].location[1]])
-    return np.asarray(list_action)
+    list_nodes = np.array([node.location for node in net.listNodes])
+    cluster_centers = kmeans_clustering(list_nodes, n_clusters=49)
+    cluster_centers = np.vstack((np.array([[500, 500]]), cluster_centers))
+    # list_action.append([net.baseStation.location[0], net.baseStation.location[1]])
+    # for i in range(0, n_actions-1):
+    #     list_action.append([net.listNodes[i].location[0], net.listNodes[i].location[1]])
+    return cluster_centers
     
 
 class Q_learning:
@@ -23,7 +35,7 @@ class Q_learning:
         self.theta = theta
     
     def reset(self):
-        self.n_actions = len(self.mc.net.listNodes) + 1
+        self.n_actions = 50
         self.action_list = init_list_action(self.n_actions, self.mc.net)
         #self.q_table = init_qtable(self.n_actions)
         self.charging_time = [0.0 for _ in self.action_list]

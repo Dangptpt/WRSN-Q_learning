@@ -43,12 +43,10 @@ class Node:
         self.log = []
         self.log_energy = 0
         self.check_status()
-        self.target_data = []
-        self.num_path = 0
+        #self.target_data = []
+        #self.num_path = 0
         self.is_request = False
         self.theta = 0.2
-
-        self.num_path = 0
         
     def count_path(self):
         tmp = self.neighbors.copy()
@@ -152,9 +150,9 @@ class Node:
 
     def receive_package(self, package):
         e_receive = self.er * package.package_size
-        if package.target_id not in self.target_data :
-            self.target_data.append(package.target_id)
-            self.num_path +=1
+        # if package.target_id not in self.target_data :
+        #     self.target_data.append(package.target_id)
+        #     self.num_path +=1
         if self.energy - self.threshold < e_receive:
             self.energy = self.threshold
         else:

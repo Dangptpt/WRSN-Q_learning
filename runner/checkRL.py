@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from rl_env.WRSN import WRSN
+import matplotlib.pyplot as plt
+import numpy as np
+import pickle
 
 def log(net):
     # If you want to print something, just put it here. Do not fix the core code.
@@ -19,13 +22,15 @@ network = WRSN(scenario_path="physical_env/network/network_scenarios/hanoi1000n5
                ,num_agent=3)
 
 
-n_episode = 1
+n_episode = 2
+
+with open('q_table.pkl', 'rb') as f:
+    q = pickle.load(f)
+
+# for i in range(3):
+#     q.append(np.zeros((50, 50), dtype=float))
 
 
-q = []
-for i in range(3):
-    q.append(np.zeros((83, 83), dtype=float))
-    
 for eps in range(n_episode):
     network.reset()
     network.env.process(log(network.net)) 
@@ -36,15 +41,22 @@ for eps in range(n_episode):
             network.step()
         else:
             for i, node in enumerate(network.net.listNodes):
-                print (i, node.location, node.energy, node.energyCS, node.energyRR, node.num_path)
+                print (i, node.location, node.energy)
             for id, agent, in enumerate(network.agents):
                 q[id] = agent.q_learning.q_table 
             break
+
+    with open('q_table.pkl', 'wb') as f:
+        pickle.dump(q, f)
     print(network.net.env.now)
 
 
-import seaborn as sns
-import matplotlib.pyplot as plt
 
-sns.heatmap(q[0], q[1], q[2], cmap='viridis') 
-plt.savefig("heatmapq1.png")
+
+
+for i in range(3):
+    plt.imshow(q[i], cmap='viridis', interpolation='nearest')
+    if i == 0:
+        plt.colorbar()  
+    plt.title('agent 1')  
+    plt.savefig(f'agent{i+1}')
