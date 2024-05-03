@@ -17,7 +17,7 @@ def init_qtable(n_actions):
 
 def init_list_action(n_actions, net):
     list_nodes = np.array([node.location for node in net.listNodes])
-    cluster_centers = kmeans_clustering(list_nodes, n_clusters=49)
+    cluster_centers = kmeans_clustering(list_nodes, n_clusters=n_actions-1)
     cluster_centers = np.vstack((np.array([[500, 500]]), cluster_centers))
     # list_action.append([net.baseStation.location[0], net.baseStation.location[1]])
     # for i in range(0, n_actions-1):
@@ -35,7 +35,7 @@ class Q_learning:
         self.theta = theta
     
     def reset(self):
-        self.n_actions = 50
+        self.n_actions = 83
         self.action_list = init_list_action(self.n_actions, self.mc.net)
         #self.q_table = init_qtable(self.n_actions)
         self.charging_time = [0.0 for _ in self.action_list]
@@ -98,8 +98,6 @@ class Q_learning:
         e = np.array([self.mc.net.listNodes[node_id].energyCS for node_id in self.mc.net.list_request])
         E = np.array([self.mc.net.listNodes[node_id].energy for node_id in self.mc.net.list_request])
         w, nb_target_alive = self.prio_weight(state, charging_time)
-        targets = []
-
 
         t = nb_target_alive/len(self.mc.net.listTargets)
         # energy factor
