@@ -1,12 +1,14 @@
-import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
+import pickle
 
-# Tạo dữ liệu mảng 2 chiều (heatmap data)
-data = np.random.rand(82, 82)
+with open('q_table.pkl', 'rb') as f:
+    q = pickle.load(f)
 
-# Tạo heatmap sử dụng seaborn
-sns.heatmap(data, cmap='viridis')  # 'viridis' là một trong các colormap có sẵn trong matplotlib
-plt.savefig("heatmap.png")
-# Hiển thị heatmap
-plt.show()
+
+for i in range(3):
+    plt.imshow(q[i], cmap='viridis', interpolation='nearest')
+    if i == 0:
+        plt.colorbar()  
+    plt.title('agent 1')  
+    plt.savefig(f'agent{i+1}')

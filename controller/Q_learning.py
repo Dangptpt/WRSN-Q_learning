@@ -26,7 +26,7 @@ def init_list_action(n_actions, net):
     
 
 class Q_learning:
-    def __init__(self, mc, epsilon=0.2, alpha=0.5, gamma=0.6, theta = 0.1):
+    def __init__(self, mc, epsilon=0.5, alpha=0.5, gamma=0.6, theta = 0.1):
         self.mc = mc
         self.reward_max = 0.0
         self.epsilon = epsilon
@@ -50,25 +50,16 @@ class Q_learning:
         q_max_value = np.max(self.q_table[self.state])
         max_state = np.argmax(self.q_table[self.state])
 
-        # if np.random.uniform(0,1) < self.epsilon :
-        #     rand_state = np.random.randint(0, self.n_actions)
-        #     rand_q_value = self.q_table[self.state][rand_state]
-        #     charging_time = self.charging_time[rand_state]
-
-        #     action = [self.action_list[rand_state][0], self.action_list[rand_state][1], charging_time, True]
-        #     return action, rand_q_value, rand_state
+        if np.random.uniform(0,1) < self.epsilon :
+            rand_state = np.random.randint(0, self.n_actions)
+            max_state = rand_state
         
         charging_time = self.charging_time[max_state]
-        self.choose_next_state()
+        self.state = max_state
 
         action = [self.action_list[max_state][0], self.action_list[max_state][1], charging_time, True]
         destination = [self.action_list[max_state][0], self.action_list[max_state][1]]
         return destination, q_max_value, self.state
-
-    def choose_next_state(self):
-        #print(self.q_table[self.state])
-        self.state = np.argmax(self.q_table[self.state])
-
 
     def q_max(self):
         q_next_state = [max(row) for index, row in enumerate(self.q_table)]

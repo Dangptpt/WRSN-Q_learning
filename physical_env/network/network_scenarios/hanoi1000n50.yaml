@@ -9,7 +9,7 @@ node_phy_spe:
   prob_gp: 1
   sen_range: 40.1
   threshold: 540
-  eth: 8000
+  eth: 7000
 seed: 0
 max_time: 604800
 Rc: 80.1

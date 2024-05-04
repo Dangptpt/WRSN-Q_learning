@@ -81,10 +81,13 @@ class WRSN(gym.Env):
                 charging_time = self.charging_time(id)
                 #print(charging_time)
                 destination, q_max_value, state = agent.q_learning.update(charging_time)
-                action = [destination[0], destination[1], charging_time[state], True]
+                if agent.cur_phy_action[3] == True:
+                    action = [destination[0], destination[1], charging_time[state], True]
+                else:
+                    action = [destination[0], destination[1], (3-id)*100, True]
+                #action = [destination[0], destination[1], charging_time[state], True]
                 print (id, action)
                 self.env.process(agent.operate_step(action))
-                n_request -= 1
 
         self.env.run(until=self.env.now + 1)    
         

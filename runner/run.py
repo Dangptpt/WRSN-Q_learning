@@ -33,27 +33,24 @@ with open('q_table.pkl', 'rb') as f:
 # with open('q_table83.pkl', 'wb') as f:
 #     pickle.dump(q, f)
 
-# for eps in range(n_episode):
-#     network.reset()
-#     network.env.process(log(network.net)) 
-#     for id, agent, in enumerate(network.agents):
-#         agent.q_learning.q_table = q[id]
-#     while True:
-#         if network.net.alive == 1:
-#             network.step()
-#         else:
-#             for i, node in enumerate(network.net.listNodes):
-#                 print (i, node.location, node.energy)
-#             for id, agent, in enumerate(network.agents):
-#                 q[id] = agent.q_learning.q_table 
-#             break
+for eps in range(n_episode):
+    network.reset()
+    network.env.process(log(network.net)) 
+    for id, agent, in enumerate(network.agents):
+        agent.q_learning.q_table = q[id]
+    while True:
+        if network.net.alive == 1:
+            network.step()
+        else:
+            for i, node in enumerate(network.net.listNodes):
+                print (i, node.location, node.energy)
+            for id, agent, in enumerate(network.agents):
+                q[id] = agent.q_learning.q_table 
+            break
 
-#     with open('q_table.pkl', 'wb') as f:
-#         pickle.dump(q, f)
-#     print(network.net.env.now)
-
-
-
+    with open('q_table.pkl', 'wb') as f:
+        pickle.dump(q, f)
+    print(network.net.env.now)
 
 
 for i in range(3):
